@@ -1,6 +1,7 @@
 from ElectricCar import ElectricCar
 from ElectricScooter import ElectricScooter
 from vehicle import Vehicle
+from Fleet import run_console
 
 
 def test_electric_car() -> None:
@@ -314,6 +315,9 @@ def main() -> None:
         print("=" * 60)
         import traceback
         traceback.print_exc()
+
+    # UC 6: Fleet/Hub management console
+    run_console()
 
 
 if __name__ == "__main__":
