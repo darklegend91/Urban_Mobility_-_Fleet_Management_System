@@ -28,4 +28,4 @@ class ElectricScooter(Vehicle):
         self.__max_speed_limit = speed
         
     def calculate_trip_cost(self, distance: float) -> float:
-            return distance * self.rental_price
+            return  1.0 + (distance * 0.15)
