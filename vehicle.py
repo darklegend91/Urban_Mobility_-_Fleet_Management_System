@@ -1,4 +1,6 @@
-class Vehicle:
+from abc import ABC , abstractmethod
+
+class Vehicle(ABC):
     
     ALLOWED_STATUSES = {"Maintained", "Need Service"}
     
@@ -64,3 +66,7 @@ class Vehicle:
         if value < 0:
             raise ValueError("Price can not be Negative")
         self.__rental_price = value
+        
+    @abstractmethod
+    def calculate_trip_cost(self , distance: float) -> float:
+        pass

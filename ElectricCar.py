@@ -30,5 +30,9 @@ class ElectricCar(Vehicle):
     @seating_capacity.setter
     def seating_capacity(self , value : int) -> None:
         if value<=0:
-                            raise ValueError("Seating capacity must be not 0 or negative.")
+            raise ValueError("Seating capacity must be not 0 or negative.")
         self.__seating_capacity = value
+        
+    
+    def calculate_trip_cost(self, distance: float) -> float:
+        return distance * self.rental_price
