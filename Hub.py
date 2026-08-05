@@ -3,7 +3,6 @@ from ElectricCar import ElectricCar
 from ElectricScooter import ElectricScooter
 
 class Hub:
-    hubs = set()
     
     def __init__(self , name : str) -> None:
         self.__name = name
