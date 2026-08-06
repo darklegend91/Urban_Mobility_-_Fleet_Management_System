@@ -16,7 +16,12 @@ class Vehicle(ABC):
     def __str__(self) -> str:
         return f"Vehicle #{self.vehicle_id} Details:\nModel : {self.model}\nBattery Percentage : {self.battery_percentage:.2f}\nRental Price: {self.rental_price:.2f}\nMaintainance Status : {self.maintenance_status}"
     
-    #utility Methods
+    def __eq__(self , other) ->bool:
+        """ This is overriding of the """
+        if not isinstance(other , Vehicle):
+            return False
+        return self.vehicle_id == other.vehicle_id
+        
     @staticmethod
     def get_ALLOWED_STATUSES() -> set[str]:
         return Vehicle.ALLOWED_STATUSES
