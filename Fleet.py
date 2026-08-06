@@ -47,6 +47,37 @@ class FleetManager:
             print(f"\n{hub.name}")
             hub.get_all_vehicles()
 
+    def search_by_hub(self, hub_name):
+        hub = self.find_hub(hub_name)
+
+        if not hub:
+            print("Hub not found")
+            return
+
+        if not hub.vehicles:
+            print("No vehicles found")
+            return
+
+        for vehicle in hub.vehicles:
+            print(vehicle)
+
+    def search_by_battery(self):
+        vehicles = [
+            vehicle
+            for hub in self.__hubs
+            for vehicle in filter(
+                lambda vehicle: vehicle.battery_percentage > 80,
+                hub.vehicles,
+            )
+        ]
+
+        if not vehicles:
+            print("No vehicles found with battery above 80%")
+            return
+
+        for vehicle in vehicles:
+            print(vehicle)
+
 
 def _prompt_float(prompt: str) -> float:
     while True:
@@ -105,7 +136,9 @@ def run_console() -> None:
         "1. Add Hub\n"
         "2. Add Vehicle to Hub\n"
         "3. Display All Hubs\n"
-        "4. Exit\n"
+        "4. Search Vehicles by Hub\n"
+        "5. Search Vehicles with Battery Above 80%\n"
+        "6. Exit\n"
     )
 
     while True:
@@ -136,6 +169,13 @@ def run_console() -> None:
             manager.display_all_hubs()
 
         elif choice == "4":
+            hub_name = input("Enter hub name: ").strip()
+            manager.search_by_hub(hub_name)
+
+        elif choice == "5":
+            manager.search_by_battery()
+
+        elif choice == "6":
             print("Exiting Fleet Management System.")
             break
 

@@ -11,6 +11,10 @@ class Hub:
     @property
     def name(self) -> str:
         return self.__name
+
+    @property
+    def vehicles(self):
+        return self.__vehicles
     
     def find_vehicle(self, vehicle_id: str):
         """Find vehicle by ID using list comprehension."""
