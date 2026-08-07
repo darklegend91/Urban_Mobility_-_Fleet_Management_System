@@ -59,12 +59,39 @@ class Hub:
         raise ValueError(f"Vehicle {vehicle_id} not found in {self.__name}")
 
     
-    def sort_vehicles(self) -> list[Vehicle]:
+    def sort_vehicles_aplhabetical(self) -> list[Vehicle]:
         """Return vehicles sorted alphabetically by model name."""
         return sorted(
             self.__vehicles,
             key=lambda vehicle: vehicle.model.lower(),
         )
+
+    def sort_vehicles(self, sort_by: str = "model") -> list[Vehicle]:
+      sort_options = {
+          "model": (
+              lambda vehicle: vehicle.model.casefold(),
+              False,
+          ),
+          "battery": (
+              lambda vehicle: vehicle.battery_percentage,
+              True,
+          ),
+          "fare": (
+              lambda vehicle: vehicle.rental_price,
+              True,
+          ),
+      }
+
+      if sort_by not in sort_options:
+          raise ValueError("Sort option must be 'model', 'battery', or 'fare'")
+
+      sort_key, descending = sort_options[sort_by]
+
+      return sorted(
+          self.__vehicles,
+          key=sort_key,
+          reverse=descending,
+      )
 
     def get_all_vehicles(self):
         """Display full car details separately from scooter details."""

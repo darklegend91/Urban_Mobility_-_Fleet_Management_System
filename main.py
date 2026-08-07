@@ -386,6 +386,55 @@ def test_hub_str_displays_sorted_vehicles() -> None:
     print("[PASSED] Hub __str__ displays all vehicles in sorted order")
 
 
+def test_advanced_vehicle_sorting() -> None:
+    """Test descending battery and fare sorting without user input."""
+    hub = Hub("Advanced Sorting Hub")
+    empty_hub = Hub("Empty Sorting Hub")
+
+    high_fare_car = ElectricCar(
+        "CAR-A01", "City Premium", 45.0, "Available", 3000.0, 5
+    )
+    high_battery_scooter = ElectricScooter(
+        "SCOOTER-A01", "Eco Sprint", 95.0, "On Trip", 500.0, 80.0
+    )
+    middle_car = ElectricCar(
+        "CAR-A02", "Metro Drive", 70.0, "Under Maintenance", 1800.0, 4
+    )
+
+    hub.add_vehicle(high_fare_car)
+    hub.add_vehicle(high_battery_scooter)
+    hub.add_vehicle(middle_car)
+    original_order = list(hub.vehicles)
+
+    battery_sorted = hub.sort_vehicles("battery")
+    assert battery_sorted == [high_battery_scooter, middle_car, high_fare_car]
+    assert [vehicle.battery_percentage for vehicle in battery_sorted] == [
+        95.0,
+        70.0,
+        45.0,
+    ]
+
+    fare_sorted = hub.sort_vehicles("fare")
+    assert fare_sorted == [high_fare_car, middle_car, high_battery_scooter]
+    assert [vehicle.rental_price for vehicle in fare_sorted] == [
+        3000.0,
+        1800.0,
+        500.0,
+    ]
+
+    # Dynamic sorting returns new lists and does not mutate the hub.
+    assert hub.vehicles == original_order
+    assert empty_hub.sort_vehicles("battery") == []
+    assert empty_hub.sort_vehicles("fare") == []
+    _expect_value_error(
+        "Unknown sorting option is rejected",
+        hub.sort_vehicles,
+        "unknown",
+    )
+
+    print("[PASSED] Advanced sorting by battery and fare")
+
+
 def test_fleet_manager_and_hubs() -> None:
     """Test every FleetManager and Hub operation with cars and scooters."""
     print("\n========== FLEET AND HUB TESTS ==========")
@@ -563,6 +612,7 @@ def main() -> None:
         # UC 6-9: Fleet manager, hubs, and their vehicles
         test_vehicle_type_dictionary_and_display()
         test_hub_str_displays_sorted_vehicles()
+        test_advanced_vehicle_sorting()
         test_fleet_manager_and_hubs()
         
         print("\n" + "=" * 60)
