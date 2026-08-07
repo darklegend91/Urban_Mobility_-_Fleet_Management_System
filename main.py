@@ -1,7 +1,11 @@
+from collections import defaultdict
+from contextlib import redirect_stdout
+from io import StringIO
+
 from ElectricCar import ElectricCar
 from ElectricScooter import ElectricScooter
 from vehicle import Vehicle
-from Fleet import run_console
+from Fleet import FleetManager
 
 
 def test_electric_car() -> None:
@@ -287,6 +291,192 @@ def test_polymorphism() -> None:
     print("This is dynamic polymorphism in action.")
 
 
+def _get_output(function, *args) -> str:
+    """Run a display/search function and return everything it prints."""
+    output = StringIO()
+    with redirect_stdout(output):
+        function(*args)
+    return output.getvalue()
+
+
+def _expect_value_error(description, function, *args) -> None:
+    """Verify that an invalid hub operation raises ValueError."""
+    try:
+        function(*args)
+    except ValueError as error:
+        print(f"[PASSED] {description}: {error}")
+    else:
+        raise AssertionError(f"{description}: ValueError was not raised")
+
+
+def test_vehicle_type_dictionary_and_display() -> None:
+    """Test the vehicle-type defaultdict and grouped output without input."""
+    manager = FleetManager()
+    manager.add_hub("Test Hub")
+
+    car = ElectricCar(
+        "CAR-T01", "Test Electric Car", 90.0, "Maintained", 1500.0, 5
+    )
+    scooter = ElectricScooter(
+        "SCOOTER-T01",
+        "Test Electric Scooter",
+        85.0,
+        "Maintained",
+        400.0,
+        75.0,
+    )
+
+    manager.add_vehicle_to_hub("Test Hub", car)
+    manager.add_vehicle_to_hub("Test Hub", scooter)
+
+    vehicle_dict = manager.vehicle_dict
+    assert isinstance(vehicle_dict, defaultdict)
+    assert vehicle_dict.default_factory is list
+    assert vehicle_dict["Electric Car"] == [car]
+    assert vehicle_dict["Electric Scooter"] == [scooter]
+    assert vehicle_dict["Electric Car"][0] is car
+    assert vehicle_dict["Electric Scooter"][0] is scooter
+
+    display_output = _get_output(manager.display_vehicles_by_type)
+    assert "ELECTRIC CARS" in display_output
+    assert "ELECTRIC SCOOTERS" in display_output
+    assert display_output.index("ELECTRIC CARS") < display_output.index(
+        "ELECTRIC SCOOTERS"
+    )
+    assert "Vehicle #CAR-T01 Details" in display_output
+    assert "Vehicle #SCOOTER-T01 Details" in display_output
+
+    print("[PASSED] Vehicle type defaultdict and separate display")
+
+
+def test_fleet_manager_and_hubs() -> None:
+    """Test every FleetManager and Hub operation with cars and scooters."""
+    print("\n========== FLEET AND HUB TESTS ==========")
+
+    manager = FleetManager()
+
+    # Empty fleet cases
+    assert "No hubs in system!" in _get_output(manager.display_all_hubs)
+    assert "No vehicles found with battery above 80%" in _get_output(
+        manager.search_by_battery
+    )
+    assert "No vehicles in system!" in _get_output(
+        manager.display_vehicles_by_type
+    )
+    print("[PASSED] Empty fleet display and battery search")
+
+    # Add hubs, find hubs, and reject duplicate hub names
+    assert manager.add_hub("Central Hub") is True
+    assert manager.add_hub("Airport Hub") is True
+    assert manager.add_hub("Central Hub") is False
+
+    central_hub = manager.find_hub("Central Hub")
+    airport_hub = manager.find_hub("Airport Hub")
+    assert central_hub is not None
+    assert airport_hub is not None
+    assert central_hub.name == "Central Hub"
+    assert central_hub.vehicles == []
+    assert manager.find_hub("Missing Hub") is None
+    print("[PASSED] Add, find, and duplicate hub cases")
+
+    # Empty and missing hub searches
+    assert "No vehicles found" in _get_output(
+        manager.search_by_hub, "Airport Hub"
+    )
+    assert "Hub not found" in _get_output(manager.search_by_hub, "Missing Hub")
+    assert "No vehicles found in Airport Hub hub" in _get_output(
+        airport_hub.get_all_vehicles
+    )
+    print("[PASSED] Empty and missing hub search cases")
+
+    car = ElectricCar(
+        "CAR-F01", "Tata Nexon EV", 92.0, "Maintained", 1800.0, 5
+    )
+    scooter = ElectricScooter(
+        "SCOOTER-F01", "Ather 450X", 85.0, "Maintained", 450.0, 80.0
+    )
+    low_battery_car = ElectricCar(
+        "CAR-F02", "MG Comet EV", 60.0, "Need Service", 1200.0, 4
+    )
+
+    # Add both vehicle types through FleetManager. The manager automatically
+    # stores each object under its vehicle type.
+    assert manager.add_vehicle_to_hub("Central Hub", car) is True
+    assert manager.add_vehicle_to_hub("Central Hub", scooter) is True
+    assert manager.add_vehicle_to_hub("Central Hub", low_battery_car) is True
+    assert manager.add_vehicle_to_hub("Missing Hub", car) is False
+    assert central_hub.find_vehicle("CAR-F01") is car
+    assert central_hub.find_vehicle("UNKNOWN") is None
+    assert central_hub.vehicles == [car, scooter, low_battery_car]
+    print("[PASSED] Add vehicles and find vehicles")
+
+    assert manager.vehicle_dict == {
+        "Electric Car": [car, low_battery_car],
+        "Electric Scooter": [scooter],
+    }
+    assert manager.vehicle_dict["Electric Car"][0] is car
+    assert manager.vehicle_dict["Electric Scooter"][0] is scooter
+    print("[PASSED] Vehicle type-to-object dictionary")
+
+    _expect_value_error(
+        "Duplicate vehicle is rejected",
+        manager.add_vehicle_to_hub,
+        "Central Hub",
+        car,
+    )
+
+    # Display all hubs and all vehicles in a hub.
+    hub_output = _get_output(central_hub.get_all_vehicles)
+    assert "ELECTRIC CARS" in hub_output
+    assert "ELECTRIC SCOOTERS" in hub_output
+    assert hub_output.index("ELECTRIC CARS") < hub_output.index(
+        "ELECTRIC SCOOTERS"
+    )
+    assert "Vehicle #CAR-F01 Details" in hub_output
+    assert "Seating Capacity : 5" in hub_output
+    assert "Vehicle #SCOOTER-F01 Details" in hub_output
+    assert "Maximum Speed Limit : 80.0" in hub_output
+
+    fleet_output = _get_output(manager.display_all_hubs)
+    assert "Central Hub" in fleet_output
+    assert "Airport Hub" in fleet_output
+    assert "Vehicle #CAR-F02 Details" in fleet_output
+
+    type_output = _get_output(manager.display_vehicles_by_type)
+    assert type_output.index("ELECTRIC CARS") < type_output.index(
+        "ELECTRIC SCOOTERS"
+    )
+    assert "Vehicle #CAR-F01 Details" in type_output
+    assert "Vehicle #SCOOTER-F01 Details" in type_output
+    print("[PASSED] Display cars separately from scooters")
+
+    # Search by hub and battery percentage.
+    search_output = _get_output(manager.search_by_hub, "Central Hub")
+    assert "CAR-F01" in search_output
+    assert "SCOOTER-F01" in search_output
+    assert "CAR-F02" in search_output
+
+    battery_output = _get_output(manager.search_by_battery)
+    assert "CAR-F01" in battery_output
+    assert "SCOOTER-F01" in battery_output
+    assert "CAR-F02" not in battery_output
+    print("[PASSED] Search vehicles by hub and battery above 80%")
+
+    # Remove a vehicle, confirm it is gone, and test a missing removal.
+    removed_vehicle = manager.remove_vehicle_from_hub("Central Hub", "CAR-F02")
+    assert removed_vehicle is low_battery_car
+    assert central_hub.find_vehicle("CAR-F02") is None
+    assert low_battery_car not in central_hub.vehicles
+    assert manager.vehicle_dict["Electric Car"] == [car]
+    _expect_value_error(
+        "Missing vehicle cannot be removed",
+        manager.remove_vehicle_from_hub,
+        "Central Hub",
+        "UNKNOWN",
+    )
+    print("[PASSED] Remove vehicle from hub")
+
+
 def main() -> None:
     """Main function to run all tests"""
     print("=" * 60)
@@ -304,6 +494,10 @@ def main() -> None:
         
         # UC 5: Polymorphism test
         test_polymorphism()
+
+        # UC 6-9: Fleet manager, hubs, and their vehicles
+        test_vehicle_type_dictionary_and_display()
+        test_fleet_manager_and_hubs()
         
         print("\n" + "=" * 60)
         print("ALL TESTS COMPLETED SUCCESSFULLY!")
@@ -315,10 +509,6 @@ def main() -> None:
         print("=" * 60)
         import traceback
         traceback.print_exc()
-
-    # UC 6: Fleet/Hub management console
-    run_console()
-
 
 if __name__ == "__main__":
     main()

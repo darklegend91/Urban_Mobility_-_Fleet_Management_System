@@ -1,10 +1,42 @@
+from collections import defaultdict
+
 from Hub import Hub
 from ElectricCar import ElectricCar
 from ElectricScooter import ElectricScooter
+from vehicle import Vehicle
 
 class FleetManager:
     def __init__(self):
         self.__hubs = []
+        self.__vehicle_dict: defaultdict[str, list[Vehicle]] = defaultdict(
+            list,
+            {
+                "Electric Car": [],
+                "Electric Scooter": [],
+            },
+        )
+
+    @staticmethod
+    def _get_vehicle_type(vehicle: Vehicle) -> str:
+        """Return the dictionary key for a supported vehicle object."""
+        if isinstance(vehicle, ElectricCar):
+            return "Electric Car"
+        if isinstance(vehicle, ElectricScooter):
+            return "Electric Scooter"
+        raise TypeError("Only ElectricCar and ElectricScooter objects are supported")
+
+    @property
+    def vehicle_dict(self) -> defaultdict[str, list[Vehicle]]:
+        """Map each vehicle type to the vehicle objects of that type."""
+        return self.__vehicle_dict
+
+    @vehicle_dict.setter
+    def vehicle_dict(self, vehicle: Vehicle) -> None:
+        vehicle_type = self._get_vehicle_type(vehicle)
+        vehicles = self.__vehicle_dict[vehicle_type]
+        if not any(existing is vehicle for existing in vehicles):
+            vehicles.append(vehicle)
+
     
     def add_hub(self, name):
         """Add a new hub"""
@@ -30,9 +62,34 @@ class FleetManager:
         if not hub:
             print(f"Hub '{hub_name}' not found!")
             return False
-        
+
+        # Validate before changing the hub, so both collections stay in sync.
+        self._get_vehicle_type(vehicle)
         hub.add_vehicle(vehicle)
+        self.vehicle_dict = vehicle
         return True
+
+    def remove_vehicle_from_hub(self, hub_name, vehicle_id):
+        """Remove a vehicle from a hub and its vehicle-type collection."""
+        hub = self.find_hub(hub_name)
+        if not hub:
+            print(f"Hub '{hub_name}' not found!")
+            return None
+
+        removed_vehicle = hub.remove_vehicle(vehicle_id)
+        vehicle_type = self._get_vehicle_type(removed_vehicle)
+        exists_in_another_hub = any(
+            vehicle is removed_vehicle
+            for other_hub in self.__hubs
+            for vehicle in other_hub.vehicles
+        )
+        if not exists_in_another_hub:
+            self.__vehicle_dict[vehicle_type] = [
+                vehicle
+                for vehicle in self.__vehicle_dict[vehicle_type]
+                if vehicle is not removed_vehicle
+            ]
+        return removed_vehicle
     
     def display_all_hubs(self):
         """Display all hubs"""
@@ -47,6 +104,31 @@ class FleetManager:
             print(f"\n{hub.name}")
             hub.get_all_vehicles()
 
+    def display_vehicles_by_type(self):
+        """Display full car details separately from scooter details."""
+        if not any(self.__vehicle_dict.values()):
+            print("No vehicles in system!")
+            return
+
+        print("\n" + "=" * 50)
+        print("ALL VEHICLES BY TYPE")
+        print("=" * 50)
+
+        headings = {
+            "Electric Car": "ELECTRIC CARS",
+            "Electric Scooter": "ELECTRIC SCOOTERS",
+        }
+        for vehicle_type, vehicles in self.__vehicle_dict.items():
+            print(f"\n{headings[vehicle_type]}")
+            print("-" * 50)
+            if not vehicles:
+                print("No vehicles found")
+                continue
+
+            for vehicle in vehicles:
+                print(vehicle)
+                print("-" * 50)
+
     def search_by_hub(self, hub_name):
         hub = self.find_hub(hub_name)
 
@@ -58,8 +140,7 @@ class FleetManager:
             print("No vehicles found")
             return
 
-        for vehicle in hub.vehicles:
-            print(vehicle)
+        hub.get_all_vehicles()
 
     def search_by_battery(self):
         vehicles = [
@@ -77,7 +158,6 @@ class FleetManager:
 
         for vehicle in vehicles:
             print(vehicle)
-
 
 def _prompt_float(prompt: str) -> float:
     while True:
@@ -138,7 +218,8 @@ def run_console() -> None:
         "3. Display All Hubs\n"
         "4. Search Vehicles by Hub\n"
         "5. Search Vehicles with Battery Above 80%\n"
-        "6. Exit\n"
+        "6. Display All Vehicles by Type\n"
+        "7. Exit\n"
     )
 
     while True:
@@ -176,6 +257,9 @@ def run_console() -> None:
             manager.search_by_battery()
 
         elif choice == "6":
+            manager.display_vehicles_by_type()
+
+        elif choice == "7":
             print("Exiting Fleet Management System.")
             break
 

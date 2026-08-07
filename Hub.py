@@ -42,12 +42,32 @@ class Hub:
 
     
     def get_all_vehicles(self):
-        """Display all vehicles in the hub."""
+        """Display full car details separately from scooter details."""
         if not self.__vehicles:
             print(f"No vehicles found in {self.name} hub")
             return
-        
+
+        cars = [
+            vehicle for vehicle in self.__vehicles
+            if isinstance(vehicle, ElectricCar)
+        ]
+        scooters = [
+            vehicle for vehicle in self.__vehicles
+            if isinstance(vehicle, ElectricScooter)
+        ]
+
         print(f" Vehicles in {self.__name}:")
-        for vehicle in self.__vehicles:
-            vehicle_type = "Car" if isinstance(vehicle, ElectricCar) else "Scooter"
-            print(f" - {vehicle.vehicle_id}: {vehicle.model} ({vehicle_type})")
+        for heading, vehicles in (
+            ("ELECTRIC CARS", cars),
+            ("ELECTRIC SCOOTERS", scooters),
+        ):
+            print(f"\n {heading}")
+            print(" " + "-" * 40)
+            if not vehicles:
+                print(" No vehicles found")
+                continue
+
+            for vehicle in vehicles:
+                for detail_line in str(vehicle).splitlines():
+                    print(f" {detail_line}")
+                print(" " + "-" * 40)
