@@ -3,10 +3,28 @@ from ElectricCar import ElectricCar
 from ElectricScooter import ElectricScooter
 
 class Hub:
-    
+
     def __init__(self , name : str) -> None:
         self.__name = name
         self.__vehicles = []
+
+    def __str__(self) -> str:
+        """Return all hub vehicles sorted alphabetically by model."""
+        heading = f"Hub: {self.__name}"
+        if not self.__vehicles:
+            return f"{heading}\nNo vehicles found"
+
+        divider = "-" * 45
+        vehicle_details = f"\n{divider}\n".join(
+            str(vehicle) for vehicle in self.sort_vehicles()
+        )
+        return (
+            f"{heading}\n"
+            f"Vehicles sorted by model\n"
+            f"{divider}\n"
+            f"{vehicle_details}\n"
+            f"{divider}"
+        )
     
     @property
     def name(self) -> str:
@@ -41,6 +59,13 @@ class Hub:
         raise ValueError(f"Vehicle {vehicle_id} not found in {self.__name}")
 
     
+    def sort_vehicles(self) -> list[Vehicle]:
+        """Return vehicles sorted alphabetically by model name."""
+        return sorted(
+            self.__vehicles,
+            key=lambda vehicle: vehicle.model.lower(),
+        )
+
     def get_all_vehicles(self):
         """Display full car details separately from scooter details."""
         if not self.__vehicles:

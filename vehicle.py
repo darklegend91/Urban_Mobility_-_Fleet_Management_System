@@ -14,7 +14,14 @@ class Vehicle(ABC):
         self.rental_price = rental_price
         
     def __str__(self) -> str:
-        return f"Vehicle #{self.vehicle_id} Details:\nModel : {self.model}\nBattery Percentage : {self.battery_percentage:.2f}\nRental Price: {self.rental_price:.2f}\nMaintainance Status : {self.maintenance_status}"
+        """Return shared vehicle details in a format."""
+        return (
+            f"Vehicle #{self.vehicle_id} Details:\n"
+            f"  Model: {self.model}\n"
+            f"  Battery: {self.battery_percentage:.2f}%\n"
+            f"  Status: {self.maintenance_status}\n"
+            f"  Rental Price: {self.rental_price:.2f}"
+        )
     
     def __eq__(self , other) ->bool:
         """ This is overriding of the """

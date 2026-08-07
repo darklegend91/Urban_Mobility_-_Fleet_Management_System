@@ -20,7 +20,8 @@ class ElectricCar(Vehicle):
         
     
     def __str__(self) -> str:
-        return super().__str__() + f"\nSeating Capacity : {self.seating_capacity}"
+        """Return clean electric-car details for console output."""
+        return super().__str__() + f"\n  Seating Capacity: {self.seating_capacity}"
         
         
     @property

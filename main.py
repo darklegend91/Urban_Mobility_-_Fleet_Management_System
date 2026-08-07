@@ -4,8 +4,9 @@ from io import StringIO
 
 from ElectricCar import ElectricCar
 from ElectricScooter import ElectricScooter
-from vehicle import Vehicle
 from Fleet import FleetManager
+from Hub import Hub
+from vehicle import Vehicle
 
 
 def test_electric_car() -> None:
@@ -349,6 +350,42 @@ def test_vehicle_type_dictionary_and_display() -> None:
     print("[PASSED] Vehicle type defaultdict and separate display")
 
 
+def test_hub_str_displays_sorted_vehicles() -> None:
+    """Test that print(hub) shows complete details sorted by model."""
+    hub = Hub("String Test Hub")
+    empty_hub = Hub("Empty Test Hub")
+
+    zeta_car = ElectricCar(
+        "CAR-S01", "Zeta EV", 90.0, "Available", 1800.0, 5
+    )
+    alpha_scooter = ElectricScooter(
+        "SCOOTER-S01", "Alpha Ride", 80.0, "On Trip", 400.0, 70.0
+    )
+    middle_car = ElectricCar(
+        "CAR-S02", "Middle Motors", 65.0, "Under Maintenance", 1400.0, 4
+    )
+
+    hub.add_vehicle(zeta_car)
+    hub.add_vehicle(alpha_scooter)
+    hub.add_vehicle(middle_car)
+
+    hub_output = str(hub)
+    assert "Hub: String Test Hub" in hub_output
+    assert "Vehicles sorted by model" in hub_output
+    assert hub_output.index("Alpha Ride") < hub_output.index("Middle Motors")
+    assert hub_output.index("Middle Motors") < hub_output.index("Zeta EV")
+    assert hub_output.count("Vehicle #") == 3
+    assert "Maximum Speed Limit: 70.00" in hub_output
+    assert "Seating Capacity: 5" in hub_output
+
+    # sorted() returns a new list, so displaying the hub must not change its
+    # original insertion order.
+    assert hub.vehicles == [zeta_car, alpha_scooter, middle_car]
+    assert str(empty_hub) == "Hub: Empty Test Hub\nNo vehicles found"
+
+    print("[PASSED] Hub __str__ displays all vehicles in sorted order")
+
+
 def test_fleet_manager_and_hubs() -> None:
     """Test every FleetManager and Hub operation with cars and scooters."""
     print("\n========== FLEET AND HUB TESTS ==========")
@@ -410,6 +447,17 @@ def test_fleet_manager_and_hubs() -> None:
     assert central_hub.vehicles == [car, scooter, low_battery_car]
     print("[PASSED] Add vehicles and find vehicles")
 
+    sorted_vehicles = central_hub.sort_vehicles()
+    assert sorted_vehicles == [scooter, low_battery_car, car]
+    assert [vehicle.model for vehicle in sorted_vehicles] == [
+        "Ather 450X",
+        "MG Comet EV",
+        "Tata Nexon EV",
+    ]
+    assert central_hub.vehicles == [car, scooter, low_battery_car]
+    assert airport_hub.sort_vehicles() == []
+    print("[PASSED] Sort hub vehicles alphabetically by model")
+
     assert manager.vehicle_dict == {
         "Electric Car": [car, low_battery_car],
         "Electric Scooter": [scooter],
@@ -450,9 +498,9 @@ def test_fleet_manager_and_hubs() -> None:
         "ELECTRIC SCOOTERS"
     )
     assert "Vehicle #CAR-F01 Details" in hub_output
-    assert "Seating Capacity : 5" in hub_output
+    assert "Seating Capacity: 5" in hub_output
     assert "Vehicle #SCOOTER-F01 Details" in hub_output
-    assert "Maximum Speed Limit : 80.0" in hub_output
+    assert "Maximum Speed Limit: 80.00" in hub_output
 
     fleet_output = _get_output(manager.display_all_hubs)
     assert "Central Hub" in fleet_output
@@ -514,6 +562,7 @@ def main() -> None:
 
         # UC 6-9: Fleet manager, hubs, and their vehicles
         test_vehicle_type_dictionary_and_display()
+        test_hub_str_displays_sorted_vehicles()
         test_fleet_manager_and_hubs()
         
         print("\n" + "=" * 60)

@@ -15,7 +15,10 @@ class ElectricScooter(Vehicle):
         self.max_speed_limit = max_speed_limit
     
     def __str__(self) -> str:
-        return super().__str__()+ f"\nMaximum Speed Limit : {self.max_speed_limit}"
+        """Return clean electric-scooter details for console output."""
+        return super().__str__() + (
+            f"\n  Maximum Speed Limit: {self.max_speed_limit:.2f}"
+        )
     
     @property
     def max_speed_limit(self) ->float:
