@@ -1,5 +1,4 @@
 from collections import defaultdict
-
 from Hub import Hub
 from ElectricCar import ElectricCar
 from ElectricScooter import ElectricScooter
@@ -159,6 +158,29 @@ class FleetManager:
         for vehicle in vehicles:
             print(vehicle)
 
+    def get_status(self) -> dict[str, int]:
+        """Return and display the number of vehicles in each current status."""
+        status_counts = {
+            "Available": 0,
+            "On Trip": 0,
+            "Under Maintenance": 0,
+        }
+
+        for vehicles in self.__vehicle_dict.values():
+            for vehicle in vehicles:
+                status_counts[vehicle.maintenance_status] += 1
+
+        print("\n" + "=" * 45)
+        print("VEHICLE STATUS SUMMARY")
+        print("=" * 45)
+        for status, count in status_counts.items():
+            print(f"{status:<20}: {count}")
+        print("-" * 45)
+        print(f"{'Total Vehicles':<20}: {sum(status_counts.values())}")
+        print("=" * 45)
+
+        return status_counts
+
 def _prompt_float(prompt: str) -> float:
     while True:
         try:
@@ -185,7 +207,9 @@ def _build_vehicle():
     vehicle_id = input("Vehicle ID: ").strip()
     model = input("Model: ").strip()
     battery_percentage = _prompt_float("Battery percentage (0-100): ")
-    maintenance_status = input("Maintenance status ('Maintained' or 'Need Service'): ").strip()
+    maintenance_status = input(
+        "Maintenance status ('Available', 'On Trip', or 'Under Maintenance'): "
+    ).strip()
     rental_price = _prompt_float("Rental price: ")
 
     if vehicle_type == "1":
@@ -219,7 +243,8 @@ def run_console() -> None:
         "4. Search Vehicles by Hub\n"
         "5. Search Vehicles with Battery Above 80%\n"
         "6. Display All Vehicles by Type\n"
-        "7. Exit\n"
+        "7. Get Status of all vehicles by their Current status\n"
+        "8. Exit\n"
     )
 
     while True:
@@ -260,6 +285,9 @@ def run_console() -> None:
             manager.display_vehicles_by_type()
 
         elif choice == "7":
+            manager.get_status()
+
+        elif choice == "8":
             print("Exiting Fleet Management System.")
             break
 

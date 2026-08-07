@@ -15,7 +15,7 @@ def test_electric_car() -> None:
         vehicle_id="CAR-101",
         model="Tesla Model 3",
         battery_percentage=85.5,
-        maintenance_status="Maintained",
+        maintenance_status="Available",
         rental_price=2500.0,
         seating_capacity=5,
     )
@@ -36,7 +36,7 @@ def test_electric_car() -> None:
 
     print("\nUpdating car properties...")
     car.battery_percentage = 72.25
-    car.maintenance_status = "Need Service"
+    car.maintenance_status = "Under Maintenance"
     car.rental_price = 2200.0
     car.seating_capacity = 4
 
@@ -57,7 +57,7 @@ def test_electric_scooter() -> None:
         vehicle_id="SCOOTER-201",
         model="Ather 450X",
         battery_percentage=90.0,
-        maintenance_status="Maintained",
+        maintenance_status="Available",
         rental_price=500.0,
         max_speed_limit=80.0,
     )
@@ -78,7 +78,7 @@ def test_electric_scooter() -> None:
 
     print("\nUpdating scooter properties...")
     scooter.battery_percentage = 65.5
-    scooter.maintenance_status = "Need Service"
+    scooter.maintenance_status = "Under Maintenance"
     scooter.rental_price = 450.0
     scooter.max_speed_limit = 75.0
 
@@ -107,7 +107,7 @@ def test_invalid_values() -> None:
                 "CAR-102",
                 "Invalid Car",
                 120.0,
-                "Maintained",
+                "Available",
                 1000.0,
                 4,
             ),
@@ -118,7 +118,7 @@ def test_invalid_values() -> None:
                 "SCOOTER-202",
                 "Invalid Scooter",
                 -10.0,
-                "Maintained",
+                "Available",
                 300.0,
                 60.0,
             ),
@@ -140,7 +140,7 @@ def test_invalid_values() -> None:
                 "CAR-104",
                 "Invalid Car",
                 50.0,
-                "Maintained",
+                "Available",
                 -500.0,
                 4,
             ),
@@ -151,7 +151,7 @@ def test_invalid_values() -> None:
                 "CAR-105",
                 "Invalid Car",
                 50.0,
-                "Maintained",
+                "Available",
                 1000.0,
                 0,
             ),
@@ -162,7 +162,7 @@ def test_invalid_values() -> None:
                 "SCOOTER-203",
                 "Invalid Scooter",
                 50.0,
-                "Maintained",
+                "Available",
                 300.0,
                 0.0,
             ),
@@ -188,7 +188,7 @@ def test_polymorphism() -> None:
             vehicle_id="CAR-101",
             model="Tesla Model 3",
             battery_percentage=85.5,
-            maintenance_status="Maintained",
+            maintenance_status="Available",
             rental_price=2500.0,
             seating_capacity=5,
         ),
@@ -196,7 +196,7 @@ def test_polymorphism() -> None:
             vehicle_id="SCOOTER-201",
             model="Ather 450X",
             battery_percentage=90.0,
-            maintenance_status="Maintained",
+            maintenance_status="On Trip",
             rental_price=500.0,
             max_speed_limit=80.0,
         ),
@@ -204,7 +204,7 @@ def test_polymorphism() -> None:
             vehicle_id="CAR-102",
             model="Nissan Leaf",
             battery_percentage=75.0,
-            maintenance_status="Need Service",
+            maintenance_status="Under Maintenance",
             rental_price=1800.0,
             seating_capacity=4,
         ),
@@ -212,7 +212,7 @@ def test_polymorphism() -> None:
             vehicle_id="SCOOTER-202",
             model="Ola S1 Pro",
             battery_percentage=95.0,
-            maintenance_status="Maintained",
+            maintenance_status="Available",
             rental_price=600.0,
             max_speed_limit=90.0,
         ),
@@ -220,7 +220,7 @@ def test_polymorphism() -> None:
             vehicle_id="CAR-103",
             model="BMW i3",
             battery_percentage=60.0,
-            maintenance_status="Maintained",
+            maintenance_status="On Trip",
             rental_price=2200.0,
             seating_capacity=4,
         ),
@@ -228,7 +228,7 @@ def test_polymorphism() -> None:
             vehicle_id="SCOOTER-203",
             model="Bajaj Chetak",
             battery_percentage=70.0,
-            maintenance_status="Need Service",
+            maintenance_status="Under Maintenance",
             rental_price=400.0,
             max_speed_limit=65.0,
         ),
@@ -315,13 +315,13 @@ def test_vehicle_type_dictionary_and_display() -> None:
     manager.add_hub("Test Hub")
 
     car = ElectricCar(
-        "CAR-T01", "Test Electric Car", 90.0, "Maintained", 1500.0, 5
+        "CAR-T01", "Test Electric Car", 90.0, "Available", 1500.0, 5
     )
     scooter = ElectricScooter(
         "SCOOTER-T01",
         "Test Electric Scooter",
         85.0,
-        "Maintained",
+        "On Trip",
         400.0,
         75.0,
     )
@@ -390,13 +390,13 @@ def test_fleet_manager_and_hubs() -> None:
     print("[PASSED] Empty and missing hub search cases")
 
     car = ElectricCar(
-        "CAR-F01", "Tata Nexon EV", 92.0, "Maintained", 1800.0, 5
+        "CAR-F01", "Tata Nexon EV", 92.0, "Available", 1800.0, 5
     )
     scooter = ElectricScooter(
-        "SCOOTER-F01", "Ather 450X", 85.0, "Maintained", 450.0, 80.0
+        "SCOOTER-F01", "Ather 450X", 85.0, "On Trip", 450.0, 80.0
     )
     low_battery_car = ElectricCar(
-        "CAR-F02", "MG Comet EV", 60.0, "Need Service", 1200.0, 4
+        "CAR-F02", "MG Comet EV", 60.0, "Under Maintenance", 1200.0, 4
     )
 
     # Add both vehicle types through FleetManager. The manager automatically
@@ -417,6 +417,23 @@ def test_fleet_manager_and_hubs() -> None:
     assert manager.vehicle_dict["Electric Car"][0] is car
     assert manager.vehicle_dict["Electric Scooter"][0] is scooter
     print("[PASSED] Vehicle type-to-object dictionary")
+
+    status_output = StringIO()
+    with redirect_stdout(status_output):
+        status_counts = manager.get_status()
+
+    assert status_counts == {
+        "Available": 1,
+        "On Trip": 1,
+        "Under Maintenance": 1,
+    }
+    summary = status_output.getvalue()
+    assert "VEHICLE STATUS SUMMARY" in summary
+    assert "Available           : 1" in summary
+    assert "On Trip             : 1" in summary
+    assert "Under Maintenance   : 1" in summary
+    assert "Total Vehicles      : 3" in summary
+    print("[PASSED] Vehicle counts by current status")
 
     _expect_value_error(
         "Duplicate vehicle is rejected",

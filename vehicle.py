@@ -2,7 +2,7 @@ from abc import ABC , abstractmethod
 
 class Vehicle(ABC):
     
-    ALLOWED_STATUSES = {"Maintained", "Need Service"}
+    ALLOWED_STATUSES = {"Available", "On Trip", "Under Maintenance"}
     
     def __init__(self , vehicle_id: str , model: str , battery_percentage: float , maintenance_status : str , rental_price : float) -> None:
         
@@ -59,7 +59,9 @@ class Vehicle(ABC):
     @maintenance_status.setter
     def maintenance_status(self , status : str) -> None:
         if status not in Vehicle.ALLOWED_STATUSES:
-            raise ValueError("Status must be 'Maintained' or 'Need Service'")
+            raise ValueError(
+                "Status must be 'Available', 'On Trip', or 'Under Maintenance'"
+            )
         self.__maintenance_status = status
     
     @property
