@@ -1,10 +1,12 @@
+import csv
 from collections import defaultdict
 from contextlib import redirect_stdout
 from io import StringIO
+from tempfile import TemporaryDirectory
 
 from ElectricCar import ElectricCar
 from ElectricScooter import ElectricScooter
-from Fleet import FleetManager
+from Fleet import FleetManager, run_console
 from Hub import Hub
 from vehicle import Vehicle
 
@@ -591,8 +593,90 @@ def test_fleet_manager_and_hubs() -> None:
     print("[PASSED] Remove vehicle from hub")
 
 
+def test_csv_vehicle_persistence() -> None:
+    """Test saving vehicles to CSV and loading them into a new manager."""
+    print("\n========== CSV VEHICLE PERSISTENCE TESTS ==========")
+
+    with TemporaryDirectory() as temporary_directory:
+        filename = f"{temporary_directory}/vehicle_data.csv"
+
+        manager = FleetManager()
+        assert manager.add_hub("CSV Test Hub") is True
+
+        car = ElectricCar(
+            "CAR-CSV01",
+            "CSV Test Car",
+            88.5,
+            "Available",
+            1750.0,
+            5,
+        )
+        scooter = ElectricScooter(
+            "SCOOTER-CSV01",
+            "CSV Test Scooter",
+            76.0,
+            "Under Maintenance",
+            350.0,
+            72.5,
+        )
+
+        assert manager.add_vehicle_to_hub("CSV Test Hub", car) is True
+        assert manager.add_vehicle_to_hub("CSV Test Hub", scooter) is True
+        assert manager.save_to_csv(filename) == 2
+
+        with open(filename, "r", newline="", encoding="utf-8") as csv_file:
+            reader = csv.DictReader(csv_file)
+            rows = list(reader)
+
+        assert reader.fieldnames == list(FleetManager.CSV_FIELDS)
+        assert len(rows) == 2
+
+        car_row = next(row for row in rows if row["vehicle_id"] == "CAR-CSV01")
+        assert car_row["hub_name"] == "CSV Test Hub"
+        assert car_row["vehicle_type"] == "Electric Car"
+        assert car_row["model"] == "CSV Test Car"
+        assert car_row["battery_percentage"] == "88.5"
+        assert car_row["maintenance_status"] == "Available"
+        assert car_row["rental_price"] == "1750.0"
+        assert car_row["seating_capacity"] == "5"
+        assert car_row["max_speed_limit"] == ""
+
+        scooter_row = next(
+            row for row in rows if row["vehicle_id"] == "SCOOTER-CSV01"
+        )
+        assert scooter_row["hub_name"] == "CSV Test Hub"
+        assert scooter_row["vehicle_type"] == "Electric Scooter"
+        assert scooter_row["model"] == "CSV Test Scooter"
+        assert scooter_row["battery_percentage"] == "76.0"
+        assert scooter_row["maintenance_status"] == "Under Maintenance"
+        assert scooter_row["rental_price"] == "350.0"
+        assert scooter_row["seating_capacity"] == ""
+        assert scooter_row["max_speed_limit"] == "72.5"
+        print("[PASSED] Car and scooter records are written correctly to CSV")
+
+        loaded_manager = FleetManager()
+        assert loaded_manager.load_from_csv(filename) == 2
+
+        loaded_hub = loaded_manager.find_hub("CSV Test Hub")
+        assert loaded_hub is not None
+
+        loaded_car = loaded_hub.find_vehicle("CAR-CSV01")
+        loaded_scooter = loaded_hub.find_vehicle("SCOOTER-CSV01")
+        assert isinstance(loaded_car, ElectricCar)
+        assert isinstance(loaded_scooter, ElectricScooter)
+        assert loaded_car.seating_capacity == 5
+        assert loaded_car.battery_percentage == 88.5
+        assert loaded_scooter.max_speed_limit == 72.5
+        assert loaded_scooter.maintenance_status == "Under Maintenance"
+        assert loaded_manager.vehicle_dict["Electric Car"] == [loaded_car]
+        assert loaded_manager.vehicle_dict["Electric Scooter"] == [
+            loaded_scooter
+        ]
+        print("[PASSED] Vehicle records are loaded back from CSV")
+
+
 def main() -> None:
-    """Main function to run all tests"""
+    """Run all test cases, then start the fleet management console."""
     print("=" * 60)
     print("VEHICLE MANAGEMENT SYSTEM - COMPLETE TEST SUITE")
     print("=" * 60)
@@ -614,6 +698,7 @@ def main() -> None:
         test_hub_str_displays_sorted_vehicles()
         test_advanced_vehicle_sorting()
         test_fleet_manager_and_hubs()
+        test_csv_vehicle_persistence()
         
         print("\n" + "=" * 60)
         print("ALL TESTS COMPLETED SUCCESSFULLY!")
@@ -625,6 +710,10 @@ def main() -> None:
         print("=" * 60)
         import traceback
         traceback.print_exc()
+        return
+
+    print("\nStarting Fleet Management System...")
+    run_console()
 
 if __name__ == "__main__":
     main()

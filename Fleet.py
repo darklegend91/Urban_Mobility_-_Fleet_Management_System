@@ -1,10 +1,26 @@
+import csv
 from collections import defaultdict
+
 from Hub import Hub
 from ElectricCar import ElectricCar
 from ElectricScooter import ElectricScooter
 from vehicle import Vehicle
 
+
 class FleetManager:
+    file_name = "vehicle_data.csv"
+    CSV_FIELDS = (
+        "hub_name",
+        "vehicle_type",
+        "vehicle_id",
+        "model",
+        "battery_percentage",
+        "maintenance_status",
+        "rental_price",
+        "seating_capacity",
+        "max_speed_limit",
+    )
+
     def __init__(self):
         self.__hubs = []
         self.__vehicle_dict: defaultdict[str, list[Vehicle]] = defaultdict(
@@ -89,6 +105,141 @@ class FleetManager:
                 if vehicle is not removed_vehicle
             ]
         return removed_vehicle
+
+    def save_to_csv(self, file_path=None) -> int:
+        """Save every vehicle and its hub to a CSV file."""
+        csv_path = file_path if file_path is not None else self.file_name
+        vehicle_count = 0
+
+        with open(csv_path, "w", newline="", encoding="utf-8") as csv_file:
+            writer = csv.DictWriter(csv_file, fieldnames=self.CSV_FIELDS)
+            writer.writeheader()
+
+            for hub in self.__hubs:
+                for vehicle in hub.vehicles:
+                    vehicle_type = self._get_vehicle_type(vehicle)
+                    row = {
+                        "hub_name": hub.name,
+                        "vehicle_type": vehicle_type,
+                        "vehicle_id": vehicle.vehicle_id,
+                        "model": vehicle.model,
+                        "battery_percentage": vehicle.battery_percentage,
+                        "maintenance_status": vehicle.maintenance_status,
+                        "rental_price": vehicle.rental_price,
+                        "seating_capacity": "",
+                        "max_speed_limit": "",
+                    }
+
+                    if isinstance(vehicle, ElectricCar):
+                        row["seating_capacity"] = vehicle.seating_capacity
+                    else:
+                        row["max_speed_limit"] = vehicle.max_speed_limit
+
+                    writer.writerow(row)
+                    vehicle_count += 1
+
+        print(f"Saved {vehicle_count} vehicle(s) to {csv_path}.")
+        return vehicle_count
+
+    def load_from_csv(self, file_path=None) -> int:
+        """Load fleet data from CSV, replacing the manager's current data."""
+        csv_path = file_path if file_path is not None else self.file_name
+
+        loaded_hubs = []
+        loaded_vehicle_dict: defaultdict[str, list[Vehicle]] = defaultdict(
+            list,
+            {
+                "Electric Car": [],
+                "Electric Scooter": [],
+            },
+        )
+        vehicle_count = 0
+
+        try:
+            csv_file = open(csv_path, "r", newline="", encoding="utf-8")
+        except FileNotFoundError:
+            print(f"No saved fleet data found at {csv_path}.")
+            return 0
+
+        with csv_file:
+            reader = csv.DictReader(csv_file)
+            available_fields = set(reader.fieldnames or [])
+            missing_fields = set(self.CSV_FIELDS) - available_fields
+            if missing_fields:
+                missing = ", ".join(sorted(missing_fields))
+                raise ValueError(f"CSV file is missing required column(s): {missing}")
+
+            for row_number, row in enumerate(reader, start=2):
+                if not any(
+                    str(value).strip()
+                    for value in row.values()
+                    if value is not None
+                ):
+                    continue
+
+                def required_value(field_name):
+                    value = (row.get(field_name) or "").strip()
+                    if not value:
+                        raise ValueError(
+                            f"CSV row {row_number} has no value for {field_name}"
+                        )
+                    return value
+
+                try:
+                    hub_name = required_value("hub_name")
+                    vehicle_type = required_value("vehicle_type")
+                    common_values = {
+                        "vehicle_id": required_value("vehicle_id"),
+                        "model": required_value("model"),
+                        "battery_percentage": float(
+                            required_value("battery_percentage")
+                        ),
+                        "maintenance_status": required_value(
+                            "maintenance_status"
+                        ),
+                        "rental_price": float(required_value("rental_price")),
+                    }
+
+                    if vehicle_type == "Electric Car":
+                        vehicle = ElectricCar(
+                            **common_values,
+                            seating_capacity=int(
+                                required_value("seating_capacity")
+                            ),
+                        )
+                    elif vehicle_type == "Electric Scooter":
+                        vehicle = ElectricScooter(
+                            **common_values,
+                            max_speed_limit=float(
+                                required_value("max_speed_limit")
+                            ),
+                        )
+                    else:
+                        raise ValueError(
+                            f"unsupported vehicle type '{vehicle_type}'"
+                        )
+
+                    hub = next(
+                        (hub for hub in loaded_hubs if hub.name == hub_name),
+                        None,
+                    )
+                    if hub is None:
+                        hub = Hub(hub_name)
+                        loaded_hubs.append(hub)
+
+                    hub.add_vehicle(vehicle)
+                    loaded_vehicle_dict[vehicle_type].append(vehicle)
+                    vehicle_count += 1
+                except (TypeError, ValueError) as error:
+                    raise ValueError(
+                        f"Invalid fleet data in CSV row {row_number}: {error}"
+                    ) from error
+
+        # Replace the live collections only after the entire file is valid.
+        self.__hubs = loaded_hubs
+        self.__vehicle_dict = loaded_vehicle_dict
+        print(f"Loaded {vehicle_count} vehicle(s) from {csv_path}.")
+        return vehicle_count
     
     def display_all_hubs(self):
         """Display all hubs"""
@@ -232,6 +383,10 @@ def _build_vehicle():
 def run_console() -> None:
     """Console menu for managing hubs and vehicles."""
     manager = FleetManager()
+    try:
+        manager.load_from_csv()
+    except (OSError, csv.Error, ValueError) as error:
+        print(f"Could not load saved fleet data: {error}")
 
     menu = (
         "\n" + "=" * 50 + "\n"
@@ -267,9 +422,12 @@ def run_console() -> None:
                 continue
             if vehicle is not None:
                 try:
-                    manager.add_vehicle_to_hub(hub_name, vehicle)
+                    if manager.add_vehicle_to_hub(hub_name, vehicle):
+                        manager.save_to_csv()
                 except ValueError as error:
                     print(f"Could not add vehicle: {error}")
+                except (OSError, csv.Error) as error:
+                    print(f"Vehicle added, but CSV could not be saved: {error}")
 
         elif choice == "3":
             manager.display_all_hubs()
@@ -288,12 +446,12 @@ def run_console() -> None:
             manager.get_status()
 
         elif choice == "8":
+            try:
+                manager.save_to_csv()
+            except (OSError, csv.Error) as error:
+                print(f"Could not save fleet data: {error}")
             print("Exiting Fleet Management System.")
             break
 
         else:
             print("Invalid choice, please try again.")
-
-
-if __name__ == "__main__":
-    run_console()
