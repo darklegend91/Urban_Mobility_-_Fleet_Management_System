@@ -1,5 +1,7 @@
 import csv
+import json
 from collections import defaultdict
+from pathlib import Path
 
 from Hub import Hub
 from ElectricCar import ElectricCar
@@ -8,7 +10,10 @@ from vehicle import Vehicle
 
 
 class FleetManager:
-    file_name = "vehicle_data.csv"
+    CSV_FILE_NAME = "vehicle_data.csv"
+    JSON_FILE_NAME = "fleet_data.json"
+    # Kept as an alias for code written before JSON support was added.
+    file_name = CSV_FILE_NAME
     CSV_FIELDS = (
         "hub_name",
         "vehicle_type",
@@ -105,6 +110,10 @@ class FleetManager:
                 if vehicle is not removed_vehicle
             ]
         return removed_vehicle
+
+    def to_dict(self) -> dict:
+        """Return the complete nested fleet in a JSON-serializable form."""
+        return {"hubs": [hub.to_dict() for hub in self.__hubs]}
 
     def save_to_csv(self, file_path=None) -> int:
         """Save every vehicle and its hub to a CSV file."""
@@ -240,6 +249,115 @@ class FleetManager:
         self.__vehicle_dict = loaded_vehicle_dict
         print(f"Loaded {vehicle_count} vehicle(s) from {csv_path}.")
         return vehicle_count
+
+    def save_to_json(self, file_path=None) -> int:
+        """Save hubs and their custom vehicle objects as nested JSON data."""
+        json_path = file_path if file_path is not None else self.JSON_FILE_NAME
+        vehicle_count = sum(len(hub.vehicles) for hub in self.__hubs)
+
+        with open(json_path, "w", encoding="utf-8") as json_file:
+            json.dump(self.to_dict(), json_file, indent=4)
+
+        print(f"Saved {vehicle_count} vehicle(s) to {json_path}.")
+        return vehicle_count
+
+    @staticmethod
+    def _vehicle_from_json(vehicle_data: dict) -> Vehicle:
+        """Recreate the correct custom vehicle type from one JSON object."""
+        common_values = {
+            "vehicle_id": vehicle_data["vehicle_id"],
+            "model": vehicle_data["model"],
+            "battery_percentage": vehicle_data["battery_percentage"],
+            "maintenance_status": vehicle_data["maintenance_status"],
+            "rental_price": vehicle_data["rental_price"],
+        }
+
+        vehicle_type = vehicle_data["type"]
+        if vehicle_type == "ElectricCar":
+            return ElectricCar(
+                **common_values,
+                seating_capacity=vehicle_data["seating_capacity"],
+            )
+        if vehicle_type == "ElectricScooter":
+            return ElectricScooter(
+                **common_values,
+                max_speed_limit=vehicle_data["max_speed_limit"],
+            )
+        raise ValueError(f"Unsupported vehicle type '{vehicle_type}'")
+
+    def load_from_json(self, file_path=None) -> int:
+        """Load nested JSON data, replacing the manager's current fleet."""
+        json_path = file_path if file_path is not None else self.JSON_FILE_NAME
+
+        try:
+            with open(json_path, "r", encoding="utf-8") as json_file:
+                data = json.load(json_file)
+        except FileNotFoundError:
+            print(f"No saved fleet data found at {json_path}.")
+            return 0
+
+        if not isinstance(data, dict) or not isinstance(data.get("hubs"), list):
+            raise ValueError("JSON data must contain a 'hubs' list")
+
+        loaded_hubs = []
+        loaded_vehicle_dict: defaultdict[str, list[Vehicle]] = defaultdict(
+            list,
+            {
+                "Electric Car": [],
+                "Electric Scooter": [],
+            },
+        )
+        vehicle_count = 0
+
+        try:
+            for hub_number, hub_data in enumerate(data["hubs"], start=1):
+                if not isinstance(hub_data, dict):
+                    raise ValueError(f"hub {hub_number} must be a JSON object")
+
+                hub_name = hub_data["name"]
+                vehicle_data_list = hub_data["vehicles"]
+                if not isinstance(hub_name, str) or not hub_name.strip():
+                    raise ValueError(f"hub {hub_number} has an invalid name")
+                if not isinstance(vehicle_data_list, list):
+                    raise ValueError(
+                        f"vehicles for hub '{hub_name}' must be a list"
+                    )
+                if any(hub.name == hub_name for hub in loaded_hubs):
+                    raise ValueError(f"duplicate hub name '{hub_name}'")
+
+                hub = Hub(hub_name)
+                loaded_hubs.append(hub)
+
+                for vehicle_data in vehicle_data_list:
+                    if not isinstance(vehicle_data, dict):
+                        raise ValueError(
+                            f"vehicle data in hub '{hub_name}' must be an object"
+                        )
+                    vehicle = self._vehicle_from_json(vehicle_data)
+                    hub.add_vehicle(vehicle)
+                    vehicle_type = self._get_vehicle_type(vehicle)
+                    loaded_vehicle_dict[vehicle_type].append(vehicle)
+                    vehicle_count += 1
+        except (KeyError, TypeError, ValueError) as error:
+            raise ValueError(f"Invalid fleet data in JSON: {error}") from error
+
+        # Do not replace valid live data unless the whole JSON file is valid.
+        self.__hubs = loaded_hubs
+        self.__vehicle_dict = loaded_vehicle_dict
+        print(f"Loaded {vehicle_count} vehicle(s) from {json_path}.")
+        return vehicle_count
+
+    @staticmethod
+    def view_file(file_path: str) -> str:
+        """Print and return the contents of a saved CSV or JSON file."""
+        with open(file_path, "r", encoding="utf-8") as data_file:
+            contents = data_file.read()
+
+        print(f"\nContents of {file_path}")
+        print("=" * 60)
+        print(contents.rstrip() if contents else "The file is empty.")
+        print("=" * 60)
+        return contents
     
     def display_all_hubs(self):
         """Display all hubs"""
@@ -348,6 +466,36 @@ def _prompt_int(prompt: str) -> int:
             print("Please enter a valid whole number.")
 
 
+def _choose_data_file() -> tuple[str, str] | None:
+    """Ask for CSV or JSON and return its format and selected filename."""
+    print("\nFile format:")
+    print("1. CSV")
+    print("2. JSON")
+    file_choice = input("Choose a format: ").strip()
+
+    file_options = {
+        "1": ("csv", FleetManager.CSV_FILE_NAME, ".csv"),
+        "2": ("json", FleetManager.JSON_FILE_NAME, ".json"),
+    }
+    if file_choice not in file_options:
+        print("Invalid file format.")
+        return None
+
+    file_format, default_name, required_suffix = file_options[file_choice]
+    entered_name = input(
+        f"File name (press Enter to use '{default_name}'): "
+    ).strip()
+    if not entered_name:
+        return file_format, default_name
+
+    selected_path = Path(entered_name)
+    if selected_path.suffix.casefold() != required_suffix:
+        selected_path = selected_path.with_suffix(required_suffix)
+        print(f"Using file name '{selected_path}'.")
+
+    return file_format, str(selected_path)
+
+
 def _build_vehicle():
     """Prompt the user for details and build an ElectricCar or ElectricScooter."""
     print("\nVehicle type:")
@@ -383,10 +531,6 @@ def _build_vehicle():
 def run_console() -> None:
     """Console menu for managing hubs and vehicles."""
     manager = FleetManager()
-    try:
-        manager.load_from_csv()
-    except (OSError, csv.Error, ValueError) as error:
-        print(f"Could not load saved fleet data: {error}")
 
     menu = (
         "\n" + "=" * 50 + "\n"
@@ -399,7 +543,10 @@ def run_console() -> None:
         "5. Search Vehicles with Battery Above 80%\n"
         "6. Display All Vehicles by Type\n"
         "7. Get Status of all vehicles by their Current status\n"
-        "8. Exit\n"
+        "8. Save Fleet Data\n"
+        "9. Load Fleet Data\n"
+        "10. View a CSV or JSON File\n"
+        "11. Exit\n"
     )
 
     while True:
@@ -422,12 +569,9 @@ def run_console() -> None:
                 continue
             if vehicle is not None:
                 try:
-                    if manager.add_vehicle_to_hub(hub_name, vehicle):
-                        manager.save_to_csv()
+                    manager.add_vehicle_to_hub(hub_name, vehicle)
                 except ValueError as error:
                     print(f"Could not add vehicle: {error}")
-                except (OSError, csv.Error) as error:
-                    print(f"Vehicle added, but CSV could not be saved: {error}")
 
         elif choice == "3":
             manager.display_all_hubs()
@@ -446,10 +590,42 @@ def run_console() -> None:
             manager.get_status()
 
         elif choice == "8":
+            selected_file = _choose_data_file()
+            if selected_file is None:
+                continue
+            file_format, file_path = selected_file
             try:
-                manager.save_to_csv()
-            except (OSError, csv.Error) as error:
+                if file_format == "csv":
+                    manager.save_to_csv(file_path)
+                else:
+                    manager.save_to_json(file_path)
+            except (OSError, csv.Error, TypeError) as error:
                 print(f"Could not save fleet data: {error}")
+
+        elif choice == "9":
+            selected_file = _choose_data_file()
+            if selected_file is None:
+                continue
+            file_format, file_path = selected_file
+            try:
+                if file_format == "csv":
+                    manager.load_from_csv(file_path)
+                else:
+                    manager.load_from_json(file_path)
+            except (OSError, csv.Error, ValueError) as error:
+                print(f"Could not load fleet data: {error}")
+
+        elif choice == "10":
+            selected_file = _choose_data_file()
+            if selected_file is None:
+                continue
+            _, file_path = selected_file
+            try:
+                manager.view_file(file_path)
+            except OSError as error:
+                print(f"Could not view data file: {error}")
+
+        elif choice == "11":
             print("Exiting Fleet Management System.")
             break
 

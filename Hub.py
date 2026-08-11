@@ -33,6 +33,13 @@ class Hub:
     @property
     def vehicles(self):
         return self.__vehicles
+
+    def to_dict(self) -> dict:
+        """Return this hub and its vehicles as nested serializable data."""
+        return {
+            "name": self.name,
+            "vehicles": [vehicle.to_dict() for vehicle in self.vehicles],
+        }
     
     def find_vehicle(self, vehicle_id: str):
         """Find vehicle by ID using list comprehension."""

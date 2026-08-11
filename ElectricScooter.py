@@ -19,6 +19,17 @@ class ElectricScooter(Vehicle):
         return super().__str__() + (
             f"\n  Maximum Speed Limit: {self.max_speed_limit:.2f}"
         )
+
+    def to_dict(self) -> dict:
+        """Add scooter-specific values to the serialized vehicle data."""
+        data = super().to_dict()
+        data.update(
+            {
+                "type": "ElectricScooter",
+                "max_speed_limit": self.max_speed_limit,
+            }
+        )
+        return data
     
     @property
     def max_speed_limit(self) ->float:

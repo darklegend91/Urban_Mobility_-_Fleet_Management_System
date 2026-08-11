@@ -22,6 +22,16 @@ class Vehicle(ABC):
             f"  Status: {self.maintenance_status}\n"
             f"  Rental Price: {self.rental_price:.2f}"
         )
+
+    def to_dict(self) -> dict:
+        """Return the common vehicle values in a JSON-serializable form."""
+        return {
+            "vehicle_id": self.vehicle_id,
+            "model": self.model,
+            "battery_percentage": self.battery_percentage,
+            "maintenance_status": self.maintenance_status,
+            "rental_price": self.rental_price,
+        }
     
     def __eq__(self , other) ->bool:
         """ This is overriding of the """

@@ -1,4 +1,5 @@
 import csv
+import json
 from collections import defaultdict
 from contextlib import redirect_stdout
 from io import StringIO
@@ -675,6 +676,75 @@ def test_csv_vehicle_persistence() -> None:
         print("[PASSED] Vehicle records are loaded back from CSV")
 
 
+def test_json_vehicle_persistence() -> None:
+    """Test nested JSON serialization and custom-object reconstruction."""
+    print("\n========== JSON VEHICLE PERSISTENCE TESTS ==========")
+
+    with TemporaryDirectory() as temporary_directory:
+        filename = f"{temporary_directory}/fleet_data.json"
+
+        manager = FleetManager()
+        assert manager.add_hub("JSON Test Hub") is True
+        assert manager.add_hub("Empty JSON Hub") is True
+
+        car = ElectricCar(
+            "CAR-JSON01",
+            "JSON Test Car",
+            91.5,
+            "Available",
+            1900.0,
+            5,
+        )
+        scooter = ElectricScooter(
+            "SCOOTER-JSON01",
+            "JSON Test Scooter",
+            69.0,
+            "On Trip",
+            425.0,
+            78.0,
+        )
+        assert manager.add_vehicle_to_hub("JSON Test Hub", car) is True
+        assert manager.add_vehicle_to_hub("JSON Test Hub", scooter) is True
+        assert manager.save_to_json(filename) == 2
+
+        with open(filename, "r", encoding="utf-8") as json_file:
+            saved_data = json.load(json_file)
+
+        assert [hub["name"] for hub in saved_data["hubs"]] == [
+            "JSON Test Hub",
+            "Empty JSON Hub",
+        ]
+        saved_vehicles = saved_data["hubs"][0]["vehicles"]
+        assert saved_vehicles[0]["type"] == "ElectricCar"
+        assert saved_vehicles[0]["seating_capacity"] == 5
+        assert saved_vehicles[1]["type"] == "ElectricScooter"
+        assert saved_vehicles[1]["max_speed_limit"] == 78.0
+        assert saved_data["hubs"][1]["vehicles"] == []
+        print("[PASSED] Nested hub and vehicle data is written to JSON")
+
+        loaded_manager = FleetManager()
+        assert loaded_manager.load_from_json(filename) == 2
+
+        loaded_hub = loaded_manager.find_hub("JSON Test Hub")
+        assert loaded_hub is not None
+        assert loaded_manager.find_hub("Empty JSON Hub") is not None
+        loaded_car = loaded_hub.find_vehicle("CAR-JSON01")
+        loaded_scooter = loaded_hub.find_vehicle("SCOOTER-JSON01")
+        assert isinstance(loaded_car, ElectricCar)
+        assert isinstance(loaded_scooter, ElectricScooter)
+        assert loaded_car.seating_capacity == 5
+        assert loaded_scooter.max_speed_limit == 78.0
+        assert loaded_manager.vehicle_dict["Electric Car"] == [loaded_car]
+        assert loaded_manager.vehicle_dict["Electric Scooter"] == [
+            loaded_scooter
+        ]
+
+        displayed_file = _get_output(loaded_manager.view_file, filename)
+        assert "Contents of" in displayed_file
+        assert '"JSON Test Hub"' in displayed_file
+        print("[PASSED] JSON data is loaded as custom objects and can be viewed")
+
+
 def main() -> None:
     """Run all test cases, then start the fleet management console."""
     print("=" * 60)
@@ -699,6 +769,7 @@ def main() -> None:
         test_advanced_vehicle_sorting()
         test_fleet_manager_and_hubs()
         test_csv_vehicle_persistence()
+        test_json_vehicle_persistence()
         
         print("\n" + "=" * 60)
         print("ALL TESTS COMPLETED SUCCESSFULLY!")
