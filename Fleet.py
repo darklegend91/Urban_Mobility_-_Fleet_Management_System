@@ -144,7 +144,7 @@ class FleetManager:
                     else:
                         row["max_speed_limit"] = vehicle.max_speed_limit
 
-                    writer.writerow(row)
+                    writer.writerow(row) #type:ignore
                     vehicle_count += 1
 
         print(f"Saved {vehicle_count} vehicle(s) to {csv_path}.")
@@ -466,7 +466,7 @@ def _prompt_int(prompt: str) -> int:
             print("Please enter a valid whole number.")
 
 
-def _choose_data_file() -> tuple[str, str] | None:
+def _choose_data_file() -> tuple[str, str] | None: # type:ignore
     """Ask for CSV or JSON and return its format and selected filename."""
     print("\nFile format:")
     print("1. CSV")
