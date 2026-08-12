@@ -1,0 +1,3 @@
+hub_name,vehicle_type,vehicle_id,model,battery_percentage,maintenance_status,rental_price,seating_capacity,max_speed_limit
+airport,Electric Car,#001,Ciaz,78.0,Available,50000.0,5,
+airport,Electric Scooter,#002,Ola,67.0,On Trip,4000.0,,90.0
