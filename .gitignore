@@ -4,3 +4,6 @@ data.json
 vehicle_data.csv
 fleet_data.json
 .vscode
+.venv
+htmlcov/
+.coverage
