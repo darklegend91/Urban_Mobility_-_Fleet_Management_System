@@ -7,3 +7,4 @@ fleet_data.json
 .venv
 htmlcov/
 .coverage
+.pytest_cache
