@@ -1,0 +1,10 @@
+__pycache__
+vehicle.csv
+data.json
+vehicle_data.csv
+fleet_data.json
+.vscode
+.venv
+htmlcov/
+.coverage
+.pytest_cache
